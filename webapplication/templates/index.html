@@ -1,0 +1,257 @@
+{% extends "layout.html" %}
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Super Trip Advisor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='bower_components/bootstrap/dist/css/bootstrap.min.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='bower_components/eonasdan-bootstrap-datetimepicker/build/css/bootstrap-datetimepicker.min.css') }}" />
+    <style type="text/css">
+        html, body { 
+        height: 100%;
+      }
+      #map { 
+        height: 100%; 
+      }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+
+            <div class="navbar-header">
+              <a class="navbar-brand" href="#">Super Trip Advisor</a>
+            </div>
+
+            <ul class="nav navbar-nav">
+                <li class="dropdown active">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Keyword<span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="#">0:00-2:00</a></li>
+                            <li><a href="#">2:00-4:00</a></li>
+                            <li><a href="#">4:00-6:00</a></li>
+                            <li><a href="#">6:00-8:00</a></li>
+                            <li><a href="#">8:00-10:00</a></li>
+                            <li><a href="#">10:00-12:00</a></li>
+                            <li><a href="#">12:00-14:00</a></li>
+                            <li><a href="#">14:00-16:00</a></li>
+                            <li><a href="#">16:00-18:00</a></li>
+                            <li><a href="#">18:00-20:00</a></li>
+                            <li><a href="#">20:00-22:00</a></li>
+                            <li><a href="#">22:00-24:00</a></li>
+                        </ul>
+                </li>
+            </ul>
+            </form>
+            <ul class="nav navbar-nav navbar-right">
+                <button type="button" id="submitBtn" class="btn btn-default navbar-btn">Green Search</button>
+                <button type="button" id="submitBtn2" class="btn btn-default navbar-btn">Yellow Search</button>
+                <button type="button" id="submitBtn3" class="btn btn-default navbar-btn">Uber Search</button>
+                                              <!--set search button -->
+            </ul>
+        </div>
+    </nav> 
+
+    <script type="text/javascript" src="{{ url_for('static', filename='bower_components/jquery/dist/jquery.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='bower_components/moment/min/moment.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='bower_components/bootstrap/dist/js/bootstrap.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='bower_components/eonasdan-bootstrap-datetimepicker/build/js/bootstrap-datetimepicker.min.js') }}"></script>
+    <!--design tne web style using nav bar -->
+  <div id="map"></div>
+  <script>
+
+      
+     
+  // Create a <script> tag and set the USGS URL as the source. save keyword and pass it to the http. return twitters that contains keywords
+    var alldata;
+    var t;
+    var s;
+    var originla;
+    var originlt;
+    var modelway;
+    var script = document.createElement('script');
+    $(function(){
+    $(".dropdown").on("click", "li a", function() {
+    keyword = $(this).text();
+    $(".dropdown-toggle").html(keyword + ' <span class="caret"></span>');
+}); 
+    $("#submitBtn").click(function() {
+         modelway='green'
+         console.log(keyword)
+         $.ajax({
+            type: "GET",
+            url: $SCRIPT_ROOT + "/echo/",
+            contentType: "application/json; charset=utf-8",
+            data: { echovalue:keyword,
+                   model:'green' },
+            success: function(response) {
+              alldata=response
+              MarkMap(response)
+            }
+        });     
+    });
+    $("#submitBtn2").click(function() {
+         modelway='yellow'
+         console.log(keyword)
+         $.ajax({
+            type: "GET",
+            url: $SCRIPT_ROOT + "/echo/",
+            contentType: "application/json; charset=utf-8",
+            data: { echovalue:keyword,
+                    model:'yellow' },
+            success: function(response) {
+              alldata=response
+              MarkMap(response)
+            }
+        });     
+    });
+    $("#submitBtn3").click(function() {
+         modelway='uber'
+         console.log(keyword)
+         $.ajax({
+            type: "GET",
+            url: $SCRIPT_ROOT + "/echo/",
+            contentType: "application/json; charset=utf-8",
+            data: { echovalue:keyword,
+                    model:'uber' },
+            success: function(response) {
+              alldata=response
+              MarkMap(response)
+            }
+        });     
+    });
+  });
+     // main function when accept each keyword twitter, marker the twitter on the map, show information in the infowindow and show the marker around the point clicked on the map.
+
+
+      var map;
+
+       //initialize a map
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 12,
+          center: {lat:40.736806, lng:-73.879852},
+          mapTypeId: 'roadmap'
+        });}
+      var markersArray = [];
+
+      function MarkMap(data) {
+         console.log(data.length)
+         clearMaps();
+         for (var i = 0; i < data.length; i++) {
+          var coords = {lat:data.data[i].lat, lng:data.data[i].long}
+          addMarker(coords)
+
+        }
+          clickMap(alldata)}
+      // clear all markers on the map
+      function clearMaps() {
+        for (var i = 0; i < markersArray.length; i++ ) {
+          markersArray[i].setMap(null);
+        }
+        markersArray.length = 0;
+      }
+
+      function addMarker(location) {
+        // define marker style
+        var marker = new google.maps.Marker({
+          position: location,
+          map: map
+        });
+        // store information in marker
+        markersArray.push(marker);
+        storemarker=markersArray;
+      }
+      function clickMap(data){
+
+        google.maps.event.addDomListener(map,'click', function(event){
+
+        // when clicking marker, it will send request to http with the clicked twitter id, and http will response twitter content, username and date to the html and show on the web page with a info window.
+          basisla=event.latLng.lat();
+          originla=basisla;
+          
+          basislo=event.latLng.lng();
+          originlt=basislo;
+          var mylocation={lat:basisla, lng:basislo};
+          $.ajax({
+            type: "GET",
+            url: $SCRIPT_ROOT + "/getDetails/",
+            contentType: "application/json; charset=utf-8",
+            data: { location1:basisla,
+                    location2:basislo,
+                    value:keyword,
+                    model:modelway},
+            success: function(response) {
+              var dest={lat:response.data.lat,lng:response.data.long};
+              var t=dest;
+              var weather=response.weather
+              var s=response;
+              console.log(dest)
+              console.log(mylocation);
+              clearMaps();
+              var service = new google.maps.places.PlacesService(map);
+              service.nearbySearch({
+                 location: mylocation,
+                 radius: 500,
+                 type: ['bus_station']
+              }, callback);
+               function callback(results, status) {
+              if (status === google.maps.places.PlacesServiceStatus.OK) {
+          for (var i = 0; i < results.length; i++) {
+            createMarker(results[i]);
+          }
+        }
+      }
+
+      function createMarker(place) {
+        var placeLoc = place.geometry.location;
+        var marker = new google.maps.Marker({
+          map: map,
+          position: place.geometry.location,
+          label:'bus'
+        });}
+
+              var infowindow = new google.maps.InfoWindow({
+              content: "<h1 style='background-color:DodgerBlue;'><center>"+'recommendation'+"</center></h1><p style='font-size:18px;'><b>"+'weather condition: '+weather+"</b></h1><p style='font-size:18px;''>"+'Option 1: Head to the recommended waiting spot.'+"</p><p style='font-size:18px;''>"+'Option 2: Head to public transportation stops nearby.'+"</p>" 
+          });
+              infowindow.setPosition({lat:originla, lng: originlt});
+              infowindow.open(map);
+              directionsService = new google.maps.DirectionsService;
+              directionsDisplay = new google.maps.DirectionsRenderer({
+                                                   map: map});
+              
+          directionsService.route({
+            origin: mylocation,
+            destination: t,
+    travelMode: google.maps.TravelMode.WALKING
+  }, function(response, status) {
+    if (status == google.maps.DirectionsStatus.OK) {
+      directionsDisplay.setDirections(response);
+    } else {
+      window.alert('Directions request failed due to ' + status);
+    }
+  });
+            
+      }})
+      })}
+        // when clicking map, it will get the location of the clicked twitter and compare it with other marker in the map. we can show all the marker around the clicked point on the map.
+
+    </script>
+    <script 
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBDYRy_W0yV8WM552qME4RrmUBo5P9RgIY&libraries=places&callback=initMap">
+      
+    </script>
+
+
+
+<script type=text/javascript>
+
+  
+<!---->
+</script>
+<strong>Enter a value to echo back:</strong>
+<input type='text' size='10' id='echoText' name='echoText'>
+<strong><div id='echoResult'></div></strong>
+{% endblock %}
